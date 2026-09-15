@@ -176,3 +176,25 @@ void vga_set_palette(uint8_t index, uint8_t r, uint8_t g, uint8_t b) {
     outb(0x3C9, g >> 2);
     outb(0x3C9, b >> 2);
 }
+
+void draw_image_rle(int x, int y, const uint8_t *data, uint32_t size, int width, int height) {
+    uint32_t pos = 0;
+    uint32_t pixel = 0;
+
+    while (pos + 1 < size && pixel < 320 * 240) {
+        uint8_t count = data[pos++];
+        uint8_t color = data[pos++];
+
+        for (uint32_t i = 0; i < count && pixel < 320 * 240; i++) {
+            int px = pixel % 320;
+            int py = pixel / 320;
+
+            int dx = (px * width) / 320;
+            int dy = (py * height) / 240;
+
+            putpixel(x + dx, y + dy, color);
+
+            pixel++;
+        }
+    }
+}
