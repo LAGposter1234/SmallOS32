@@ -2,10 +2,17 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "string.h"
+#include "disk.h"
+
 #define FILE_CAPACITY ((1024 * 1024) * 1)
 #define MAX_FILES 32
+#define FS_START_SECTOR 40
+#define FS_SECTOR_SIZE 512
 
-typedef struct {
+#define FS_SIZE_BYTES   sizeof(files)
+#define FS_SECTOR_COUNT ((FS_SIZE_BYTES + FS_SECTOR_SIZE - 1) / FS_SECTOR_SIZE)
+
+typedef struct __attribute__((packed)) {
     uint8_t free;
     char name[32];
     uint32_t size;
@@ -100,4 +107,69 @@ void fs_init() {
     for (int i = 0; i < MAX_FILES; i++) {
         files[i].free = 1;
     }
+}
+
+#define FS_META_SIZE 37
+
+int fs_sync(void) {
+    uint8_t *ptr = (uint8_t *)files;
+    uint8_t buf[FS_SECTOR_SIZE];
+    for (uint32_t i = 0; i < MAX_FILES; i++) {
+        uint32_t offset = i * sizeof(fs_file);
+        uint32_t sector = FS_START_SECTOR + offset / FS_SECTOR_SIZE;
+        uint32_t off = offset % FS_SECTOR_SIZE;
+        if (disk_read_sector(sector, buf) != 0) return 1;
+        memcpy(buf + off, ptr + offset, FS_META_SIZE);
+        if (disk_write_sector(sector, buf) != 0) return 1;
+        if (files[i].free) continue;
+        uint32_t data_offset = offset + FS_META_SIZE;
+        uint32_t remaining = files[i].size;
+        uint32_t src = 0;
+        while (remaining) {
+            sector = FS_START_SECTOR + data_offset / FS_SECTOR_SIZE;
+            off = data_offset % FS_SECTOR_SIZE;
+            if (disk_read_sector(sector, buf) != 0) return 1;
+            uint32_t n = FS_SECTOR_SIZE - off;
+            if (n > remaining) n = remaining;
+            memcpy(buf + off, files[i].data + src, n);
+            if (disk_write_sector(sector, buf) != 0) return 1;
+            data_offset += n;
+            src += n;
+            remaining -= n;
+        }
+    }
+    return 0;
+}
+
+int fs_reload(void) {
+    uint8_t *ptr = (uint8_t *)files;
+    for (uint32_t i = 0; i < MAX_FILES; i++) {
+        uint32_t offset = i * sizeof(fs_file);
+        uint32_t sector = FS_START_SECTOR + offset / FS_SECTOR_SIZE;
+        uint32_t off = offset % FS_SECTOR_SIZE;
+        uint8_t buf[FS_SECTOR_SIZE];
+        if (disk_read_sector(sector, buf) != 0) return 1;
+        memcpy(ptr + offset, buf + off, FS_META_SIZE);
+        if (files[i].free) continue;
+        uint32_t data_offset = offset + FS_META_SIZE;
+        uint32_t remaining = files[i].size;
+        uint32_t dest = 0;
+        while (remaining) {
+            sector = FS_START_SECTOR + data_offset / FS_SECTOR_SIZE;
+            off = data_offset % FS_SECTOR_SIZE;
+            if (disk_read_sector(sector, buf) != 0) return 1;
+            uint32_t n = FS_SECTOR_SIZE - off;
+            if (n > remaining)n = remaining;
+            memcpy(files[i].data + dest, buf + off, n);
+            data_offset += n;
+            dest += n;
+            remaining -= n;
+        }
+    }
+    return 0;
+}
+
+int fs_format(void) {
+    fs_init();
+    return fs_sync();
 }

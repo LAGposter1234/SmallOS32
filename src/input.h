@@ -1,4 +1,5 @@
 #pragma once
+#include "io.h"
 
 static const char scancode_to_ascii[128] = {
     [0x02] = '1',
@@ -50,12 +51,6 @@ static const char scancode_to_ascii[128] = {
     [0x0C] = '-'
 };
 
-static inline uint8_t inb(uint16_t port) {
-    uint8_t value;
-    __asm__ volatile ("inb %1, %0" : "=a"(value) : "Nd"(port));
-    return value;
-}
-
 char getch(void) {
     uint8_t scancode;
 
@@ -73,6 +68,25 @@ char getch(void) {
             return scancode_to_ascii[scancode];
     }
 }
+
+
+char getch_nonblock(void) {
+    uint8_t scancode;
+
+    if (!(inb(0x64) & 1))
+        return 0;
+
+    scancode = inb(0x60);
+
+    if (scancode & 0x80)
+        return 0;
+
+    if (scancode_to_ascii[scancode])
+        return scancode_to_ascii[scancode];
+
+    return 0;
+}
+
 
 void fputc(char c);
 void putc(char c);

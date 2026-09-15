@@ -15,7 +15,7 @@ start:
     mov ax, 0x1000
     mov es, ax ; segment
     mov ah, 02h ; read sectors
-    mov al, 20h ; 32 of them
+    mov al, 0x40 ; 64 of them
     mov ch, 0 ; cylander 0
     mov cl, 2 ; sector 2? ig?
     mov dh, 0 ; head 0

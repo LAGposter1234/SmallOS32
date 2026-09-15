@@ -18,7 +18,10 @@ CFLAGS := \
 
 .PHONY: all run clean rebuild
 
-all: smallos32.img
+images:
+	./pngtovga.py ./无信号.jpg src/nosignalimg.h nosignal
+
+all: images smallos32.img
 
 
 # Bootloader
@@ -39,7 +42,7 @@ $(BUILD)/kernel.o: src/kernel.c
 
 # Link
 
-$(BUILD)/kernel.elf: $(BUILD)/kernel.o linkity.ld
+$(BUILD)/kernel.elf: $(BUILD)/kernel.o $(BUILD/syscalls.o) linkity.ld
 	@mkdir -p $(dir $@)
 	@echo "  LD      $@"
 	@$(LD) -m elf_i386 -T linkity.ld -o $@ $(BUILD)/kernel.o
@@ -65,11 +68,12 @@ $(BUILD)/kernel.pad: $(BUILD)/kernel.bin
 smallos32.img: $(BUILD)/boot.bin $(BUILD)/kernel.pad
 	@echo "  IMAGE   $@"
 	@cat $^ > $@
+	@dd if=smallos32.img of=disk.img bs=512 conv=notrunc
 
 
 # Run
 
-run: smallos32.img
+run: disk.img
 	$(QEMU) -drive format=raw,file=$<
 
 

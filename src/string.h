@@ -35,6 +35,12 @@ void strcpy(char *dest, char *src, uint32_t count) {
     dest[count - 1] = '\0';
 }
 
+unsigned long strlen(char *s) {
+    unsigned long i = 0;
+    while (*s++) i++;
+    return i;
+}
+
 int split(char *s, char ret[32][128]) {
     int pos = 0;
     int argc = 0;
