@@ -91,6 +91,15 @@ void itoa(uint32_t n, char *buf) {
     buf[j] = '\0';
 }
 
+int parse_int(char *s) {
+    int n = 0;
+
+    while (*s >= '0' && *s <= '9')
+        n = n * 10 + (*s++ - '0');
+
+    return n;
+}
+
 void strappend(char *dest, const char *src) {
     while (*dest) dest++;
 
