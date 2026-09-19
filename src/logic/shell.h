@@ -1,11 +1,44 @@
 #pragma once
 
-#include "terminal.h"
+#include "logic/terminal.h"
 
 
 int shell_exec(char *script, uint32_t size);
 int handle_cmd(char args[32][128]);
 int try_exec(char *name);
+
+void shell(void) {
+    char args[32][128];
+
+    while (1) {
+        fputs("# ");
+
+        char *line = get_line();
+
+        uint32_t argc = 0;
+        uint32_t i = 0;
+
+        while (line[i] && argc < 32) {
+            while (line[i] == ' ')
+                i++;
+
+            if (!line[i])
+                break;
+
+            uint32_t j = 0;
+            while (line[i] && line[i] != ' ' && j < 127)
+                args[argc][j++] = line[i++];
+
+            args[argc][j] = '\0';
+            argc++;
+        }
+
+        if (argc == 0)
+            continue;
+
+        int result = handle_cmd(args);
+    }
+}
 
 int handle_cmd(char args[32][128]) {
     if (strcmp(args[0], "echo") == 0) {
@@ -35,7 +68,7 @@ int handle_cmd(char args[32][128]) {
     } else if (strcmp(args[0], "exit") == 0) {
         return 1000 + parse_int(args[1]);
     } else {
-        fputs("Oops");
+        fputs("error: unknown command\n");
         return 1001;
     }
     end:

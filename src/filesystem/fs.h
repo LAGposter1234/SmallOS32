@@ -1,8 +1,8 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
-#include "string.h"
-#include "disk.h"
+#include "io/string.h"
+#include "disk/disk.h"
 
 #define FILE_CAPACITY ((1024 * 1024) * 1)
 #define MAX_FILES 32

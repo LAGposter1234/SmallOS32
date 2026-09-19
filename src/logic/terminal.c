@@ -1,6 +1,7 @@
-#pragma once
-
-#include "vga.h"
+#include <stdint.h>
+#include "kernel/vga.h"
+#include "logic/terminal.h"
+#include "fonts/font8x16.h"
 
 #define TERM_COLS 80
 #define TERM_ROWS 30

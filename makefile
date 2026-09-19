@@ -14,14 +14,23 @@ CFLAGS := \
 	-mno-sse \
 	-mno-sse2 \
 	-fno-builtin \
-	-O0
+	-O0 \
+	-Isrc
 
-.PHONY: all run clean rebuild
+CFILES := $(shell find src -name '*.c')
+AFILES := $(shell find src -name '*.asm')
 
-images:
-	./pngtovga.py ./无信号.jpg src/nosignalimg.h nosignal
+COBJS := $(CFILES:src/%.c=$(BUILD)/%.o)
+AOBJS := $(AFILES:src/%.asm=$(BUILD)/%.o)
+
+OBJS := $(COBJS) $(AOBJS)
+
+.PHONY: all run clean rebuild images
 
 all: images smallos32.img
+
+images:
+	./pngtovga.py --all-images-in-pwd -out=src/kernel/images.h -bpp=2
 
 
 # Bootloader
@@ -32,20 +41,28 @@ $(BUILD)/boot.bin: boot.asm
 	@$(AS) -f bin $< -o $@
 
 
-# Kernel C
+# C source
 
-$(BUILD)/kernel.o: src/kernel.c
+$(BUILD)/%.o: src/%.c
 	@mkdir -p $(dir $@)
 	@echo "  CC      $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 
+# Assembly source
+
+$(BUILD)/%.o: src/%.asm
+	@mkdir -p $(dir $@)
+	@echo "  NASM    $<"
+	@$(AS) -f elf32 $< -o $@
+
+
 # Link
 
-$(BUILD)/kernel.elf: $(BUILD)/kernel.o $(BUILD/syscalls.o) linkity.ld
+$(BUILD)/kernel.elf: $(OBJS) linkity.ld
 	@mkdir -p $(dir $@)
 	@echo "  LD      $@"
-	@$(LD) -m elf_i386 -T linkity.ld -o $@ $(BUILD)/kernel.o
+	@$(LD) -m elf_i386 -T linkity.ld -o $@ $(OBJS)
 
 
 # Raw kernel binary
@@ -58,8 +75,7 @@ $(BUILD)/kernel.bin: $(BUILD)/kernel.elf
 # Pad kernel to 32 sectors
 
 $(BUILD)/kernel.pad: $(BUILD)/kernel.bin
-	@echo "  PAD     $@"
-	@dd if=/dev/zero of=$@ bs=512 count=32 status=none
+	@dd if=/dev/zero of=$@ bs=512 count=64 status=none
 	@dd if=$< of=$@ conv=notrunc status=none
 
 
@@ -68,7 +84,7 @@ $(BUILD)/kernel.pad: $(BUILD)/kernel.bin
 smallos32.img: $(BUILD)/boot.bin $(BUILD)/kernel.pad
 	@echo "  IMAGE   $@"
 	@cat $^ > $@
-	@dd if=smallos32.img of=disk.img bs=512 conv=notrunc
+	@dd if=smallos32.img of=disk.img bs=512 conv=notrunc status=none
 
 
 # Run
@@ -80,6 +96,6 @@ run: disk.img
 # Cleaning
 
 clean:
-	rm -rf $(BUILD) smallos32.img
+	rm -rf $(BUILD) smallos32.img disk.img
 
 rebuild: clean all

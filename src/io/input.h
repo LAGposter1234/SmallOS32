@@ -1,5 +1,5 @@
 #pragma once
-#include "io.h"
+#include "io/io.h"
 
 static const char scancode_to_ascii[128] = {
     [0x02] = '1',
